@@ -52,10 +52,14 @@ async def rank (ctx) :
     em2 = '➡️'
     await mg.add_reaction(em1)
     await mg.add_reaction(em2)
+
 @bot.command()
 async def get (ctx) :
     
     recv=rq.get(f'http://mdcpp.mingdao.edu.tw/api/problem?paging=true&offset=0&limit=200&page=1')
+    await func(recv,ctx)
+
+async def func(recv,ctx) :
     tdic=json.loads(recv.text)
     n = random.randint(0,tdic['data']['total']-1)
     shortdic=tdic['data']['results'][n]
@@ -80,105 +84,58 @@ async def get (ctx) :
             ]
         )
     ])
-    inter = await rp.wait_for_dropdown()
-    labels = [option.label for option in inter.select_menu.selected_options]
+    t=time.time()
+    while True :
+        inter = await rp.wait_for_dropdown()
+        if time.time() - t > 120 :
+            await ctx.send('過太久囉')
+            break
+        labels = [option.label for option in inter.select_menu.selected_options]
         
-    newembed=dc.Embed(
-        colour=dc.Colour(0XE5E242)
-    )
-    sr = shortdic['description']
-    if 'img' in sr :
-        ret = ''
-        for i in range (sr.find('src')+5,len(sr)) :
-            if sr[i]!='\"' :
-                ret+=sr[i]
+        newembed=dc.Embed(
+            colour=dc.Colour(0XE5E242)
+        )
+        sr = shortdic['description']
+        if 'img' in sr :
+            ret = ''
+            for i in range (sr.find('src')+5,len(sr)) :
+                if sr[i]!='\"' :
+                    ret+=sr[i]
+                else :
+                    break
+            if ret.startswith('http') :
+                newembed.set_thumbnail(url=ret)
             else :
-                break
-        if ret.startswith('http') :
-            newembed.set_thumbnail(url=ret)
-        else :
-            newembed.set_thumbnail(url='http://mdcpp.mingdao.edu.tw/'+ret)
+                newembed.set_thumbnail(url='http://mdcpp.mingdao.edu.tw/'+ret)
 
-    newembed.set_author(name=str(ctx.author),icon_url=ctx.author.avatar_url)
-    for string in labels :
-        if string.startswith('Des') :
-            newembed.add_field(name=string,value=cleanhtml(shortdic['description']),inline=False)
-        if string.startswith('Input') :
-            newembed.add_field(name=string,value=cleanhtml(shortdic['input_description']),inline=False)
-        if string.startswith('Output') :
-            newembed.add_field(name=string,value=cleanhtml(shortdic['output_description']),inline=False)
-        if string.startswith('Sample') :
+        newembed.set_author(name=str(ctx.author),icon_url=ctx.author.avatar_url)
+        for string in labels :
+            if string.startswith('Des') :
+                newembed.add_field(name=string,value=cleanhtml(shortdic['description']),inline=False)
+            if string.startswith('Input') :
+                newembed.add_field(name=string,value=cleanhtml(shortdic['input_description']),inline=False)
+            if string.startswith('Output') :
+                newembed.add_field(name=string,value=cleanhtml(shortdic['output_description']),inline=False)
+            if string.startswith('Sample') :
             
-            for i in range (len(shortdic['samples'])) :
-                 newembed.add_field(name='Sample Input '+str(i+1),value=shortdic['samples'][i]['input'],inline=False)
-                 newembed.add_field(name='Sample Output '+str(i+1),value=shortdic['samples'][i]['output'],inline=True)
-        if string.startswith('Time') :
-            newembed.add_field(name=string,value=str(shortdic['time_limit'])+' ms',inline=False)
-        if string.startswith('Memory') :
-            newembed.add_field(name=string,value=str(shortdic['memory_limit'])+' MB',inline=False)
-        if string.startswith('Diff') :
-            newembed.add_field(name=string,value=shortdic['difficulty'],inline=False)
-    await inter.reply(embed=newembed)
+                for i in range (len(shortdic['samples'])) :
+                    newembed.add_field(name='Sample Input '+str(i+1),value=shortdic['samples'][i]['input'],inline=False)
+                    newembed.add_field(name='Sample Output '+str(i+1),value=shortdic['samples'][i]['output'],inline=True)
+            if string.startswith('Time') :
+                newembed.add_field(name=string,value=str(shortdic['time_limit'])+' ms',inline=False)
+            if string.startswith('Memory') :
+                newembed.add_field(name=string,value=str(shortdic['memory_limit'])+' MB',inline=False)
+            if string.startswith('Diff') :
+                newembed.add_field(name=string,value=shortdic['difficulty'],inline=False)
+        await inter.reply(embed=newembed)
+        t=time.time()
 
 @bot.command()
 async def tag (ctx, *, args) :
      
     string = args
     recv=rq.get(f'http://mdcpp.mingdao.edu.tw/api/problem?paging=true&offset=0&limit=1000&tag={args}&page=1')
-    tdic=json.loads(recv.text)
-    n = random.randint(0,tdic['data']['total']-1)
-    shortdic=tdic['data']['results'][n]
-    embed=dc.Embed(
-        title='編號 : '+shortdic['_id'],
-        description=shortdic['title'],
-        url='http://mdcpp.mingdao.edu.tw/problem/'+shortdic['_id'],
-        colour=dc.Colour(0XE5E242)
-    )
-    rp = await ctx.send(embed=embed,components=[
-        SelectMenu(
-            placeholder='請選擇細部資訊',
-            max_values=7,
-            options=[
-                SelectOption('Description','1'),
-                SelectOption('Input Description','2'),
-                SelectOption('Output Description','3'),
-                SelectOption('Sample Input & Output','4'),
-                SelectOption('Time Limit','5'),
-                SelectOption('Memory Limit','6'),
-                SelectOption('Difficulty','7')
-            ]
-        )
-    ])
-    inter = await rp.wait_for_dropdown()
-    labels = [option.label for option in inter.select_menu.selected_options]
-        
-    newembed=dc.Embed(
-        colour=dc.Colour(0XE5E242)
-            
-    )
-    newembed.set_author(name=str(ctx.author),icon_url=ctx.author.avatar_url)
-    for string in labels :
-        if string.startswith('Des') :
-            newembed.add_field(name=string,value=cleanhtml(shortdic['description']),inline=False)
-        if string.startswith('Input') :
-            newembed.add_field(name=string,value=cleanhtml(shortdic['input_description']),inline=False)
-        if string.startswith('Output') :
-            newembed.add_field(name=string,value=cleanhtml(shortdic['output_description']),inline=False)
-        if string.startswith('Sample') :
-            
-            for i in range (len(shortdic['samples'])) :
-                 newembed.add_field(name='Sample Input '+str(i+1),value=shortdic['samples'][i]['input'],inline=False)
-                 newembed.add_field(name='Sample Output '+str(i+1),value=shortdic['samples'][i]['output'],inline=True)
-        if string.startswith('Time') :
-            newembed.add_field(name=string,value=str(shortdic['time_limit'])+' ms',inline=False)
-        if string.startswith('Memory') :
-            newembed.add_field(name=string,value=str(shortdic['memory_limit'])+' MB',inline=False)
-        if string.startswith('Diff') :
-            newembed.add_field(name=string,value=shortdic['difficulty'],inline=False)
-    await inter.reply(embed=newembed)
-
-    
-
+    await func(recv,ctx)
 
 @bot.event
 async def on_reaction_add(reaction,user) :
